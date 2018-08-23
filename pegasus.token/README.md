@@ -1,4 +1,4 @@
-pegasus.token Decentralization Exchange
+#pegasus.token Decentralization Exchange
 
 set contract@eosio.code to user@active and contract@active
 
@@ -11,6 +11,7 @@ cleos -u http://192.168.31.245:8888 push action cactus.token buy '["xiaoyu","100
 cleos -u http://192.168.31.245:8888 push action cactus.token sell '["xiaoyu","9000000.0000 LSK","0.0000 EOS","cactus"]' -p xiaoyu
 
 cleos -u http://192.168.31.245:8888 get table cactus.token LSKEOS tokenmarket
+
 {
   "rows": [{
       "supply": "100000000000000 LSKEOS",
@@ -29,6 +30,7 @@ cleos -u http://192.168.31.245:8888 get table cactus.token LSKEOS tokenmarket
 }
 
 cleos -u http://192.168.31.245:8888 get table cactus.token xiaoyu accounts
+
 {
   "rows": [{
       "balance": "398001.6387 PEG"
