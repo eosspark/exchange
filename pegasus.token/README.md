@@ -1,16 +1,16 @@
 # pegasus.token Decentralization Exchange
 
-set contract@eosio.code to user@active and contract@active
+1.set contract@eosio.code to user@active and contract@active
 
-cleos -u http://192.168.31.245:8888 set contract cactus.token  pegasus.token -p cactus.token 
+2.cleos set contract cactus.token  pegasus.token -p cactus.token 
 
-cleos -u http://192.168.31.245:8888 push action cactus.token create '["cactus","100000000000.0000 LSK","100000000000.0000 EOS",200,0]' -p cactus 
+3.cleos push action cactus.token create '["cactus","100000000000.0000 LSK","100000000000.0000 EOS",200,0]' -p cactus 
 
-cleos -u http://192.168.31.245:8888 push action cactus.token buy '["xiaoyu","100000.0000 EOS","0.0000 LSK","cactus"]' -p xiaoyu 
+4.cleos push action cactus.token buy '["xiaoyu","100000.0000 EOS","0.0000 LSK","cactus"]' -p xiaoyu 
 
-cleos -u http://192.168.31.245:8888 push action cactus.token sell '["xiaoyu","9000000.0000 LSK","0.0000 EOS","cactus"]' -p xiaoyu
+5.cleos push action cactus.token sell '["xiaoyu","9000000.0000 LSK","0.0000 EOS","cactus"]' -p xiaoyu
 
-cleos -u http://192.168.31.245:8888 get table cactus.token LSKEOS tokenmarket
+6.cleos get table cactus.token LSKEOS tokenmarket
 
 {
   "rows": [{
@@ -29,7 +29,7 @@ cleos -u http://192.168.31.245:8888 get table cactus.token LSKEOS tokenmarket
   "more": false
 }
 
-cleos -u http://192.168.31.245:8888 get table cactus.token xiaoyu accounts
+7.cleos get table cactus.token xiaoyu accounts
 
 {
   "rows": [{
