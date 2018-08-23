@@ -1,4 +1,4 @@
-#pegasus.token Decentralization Exchange
+# pegasus.token Decentralization Exchange
 
 set contract@eosio.code to user@active and contract@active
 
