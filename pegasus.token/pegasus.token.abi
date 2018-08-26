@@ -49,10 +49,10 @@
           "name": "from",
           "type": "name"
         },{
-          "name": "base_quant",
+          "name": "quant",
           "type": "asset"
         },{
-          "name": "asset_symbol",
+          "name": "symbol",
           "type": "asset"
         },{
           "name": "feeto",
@@ -66,10 +66,10 @@
           "name": "from",
           "type": "name"
         },{
-          "name": "asset_quant",
+          "name": "quant",
           "type": "asset"
         },{
-          "name": "base_symbol",
+          "name": "symbol",
           "type": "asset"
         },{
           "name": "feeto",

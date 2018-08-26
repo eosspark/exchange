@@ -30,12 +30,12 @@ namespace pegasus {
                        asset        quantity,
                        string       memo );
         void buy( account_name from, 
-                  asset base_quant, 
-                  asset asset_symbol, 
+                  asset quant, 
+                  asset symbol, 
                   account_name feeto );
         void sell( account_name from, 
-                   asset asset_quant, 
-                   asset base_symbol, 
+                   asset quant, 
+                   asset symbol, 
                    account_name feeto );
         inline asset get_supply( symbol_name sym )const;         
         inline asset get_balance( account_name owner, symbol_name sym )const;

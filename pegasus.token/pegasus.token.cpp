@@ -171,20 +171,20 @@ void token::add_balance( account_name owner, asset value, account_name payer )
 //   buy( payer, sysout, quant);
 // }
 
-void token::buy( account_name from, asset base_quant, asset asset_symbol, account_name feeto) 
+void token::buy( account_name from, asset quant, asset symbol, account_name feeto) 
 {
    //eosio::print( "token::buy line 130\n" );
    require_auth( from );
-   eosio_assert( base_quant.amount > 0, "must purchase a positive amount" );
-   eosio_assert( asset_symbol.amount == 0, "asset_symbol amount must 0" );
+   eosio_assert( quant.amount > 0, "must purchase a positive amount" );
+   eosio_assert( symbol.amount == 0, "symbol amount must 0" );
 
    //assettoken transfer
    asset    quan_out;
    //uint64_t fee_amount;
-   auto fee             = base_quant;
-   auto quant_after_fee = base_quant;
+   auto fee             = quant;
+   auto quant_after_fee = quant;
 
-   auto pair = symbol2pair(asset_symbol.symbol, base_quant.symbol);
+   auto pair = symbol2pair(symbol.symbol, quant.symbol);
    tokenmarket market( _self, pair.name() );
    auto itr = market.find( pair.name() );
    eosio_assert( itr != market.end(), "pair does not exist" );
@@ -215,48 +215,52 @@ void token::buy( account_name from, asset base_quant, asset asset_symbol, accoun
        s.supply += quan_out;
    });
 
+   require_recipient( from );
+
 }
 
-void token::sell( account_name from, asset asset_quant, asset base_symbol, account_name feeto )
+void token::sell( account_name from, asset quant, asset symbol, account_name feeto )
 {
    require_auth( from );
-   eosio_assert( base_symbol.amount == 0, "base_symbol amount must 0" );
-   eosio_assert( asset_quant.is_valid(), "invalid quantity" );
-   eosio_assert( asset_quant.amount > 0, "must transfer positive quantity" );
+   eosio_assert( symbol.amount == 0, "symbol amount must 0" );
+   eosio_assert( quant.is_valid(), "invalid quantity" );
+   eosio_assert( quant.amount > 0, "must transfer positive quantity" );
 
    //assettoken transfer 
    asset    tokens_out;
    uint64_t fee_amount;
-   auto pair = symbol2pair(asset_quant.symbol, base_symbol.symbol);
+   auto pair = symbol2pair(quant.symbol, symbol.symbol);
    tokenmarket market( _self, pair.name() );
    auto itr = market.find(pair.name());
    eosio_assert( itr != market.end(), "pair does not exist" );
    market.modify( itr, 0, [&]( auto& es ) {
-        tokens_out = es.convert( asset_quant, base_symbol.symbol);
+        tokens_out = es.convert( quant, symbol.symbol);
         fee_amount = es.fee_amount;
    });
 
-   sub_balance( from, asset_quant );
+   sub_balance( from, quant );
 
    //basetoken eosio.token transfer
    eosio_assert( tokens_out.amount > 1, "token amount received from selling pair is too low" );
    auto fee    = ( tokens_out.amount + fee_amount - 1 ) / fee_amount; /// .5% fee (round up) 
    tokens_out.amount -= fee;
    INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {_self,N(active)},
-                                                    { _self, from, asset(tokens_out.amount, base_symbol.symbol), std::string("sell token") } );
+                                                    { _self, from, asset(tokens_out.amount, symbol.symbol), std::string("sell token") } );
    if( fee > 0 ) {
       INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {from,N(active)},
-            { from, feeto, asset(fee, base_symbol.symbol ), std::string("sell fee") } );
+            { from, feeto, asset(fee, symbol.symbol ), std::string("sell fee") } );
    }
 
-   auto sym = asset_quant.symbol;
+   auto sym = quant.symbol;
    stats statstable( _self, sym.name() );
    auto st = statstable.find( sym.name() );
    eosio_assert( st != statstable.end(), "token with symbol doesn't exists" );
-   eosio_assert( asset_quant.symbol == st->supply.symbol, "symbol precision mismatch" );
+   eosio_assert( quant.symbol == st->supply.symbol, "symbol precision mismatch" );
    statstable.modify( st, 0, [&]( auto& s ) {
-       s.supply -= asset_quant;
+       s.supply -= quant;
    });
+
+   require_recipient( from );
 
 }
 
