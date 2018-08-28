@@ -270,7 +270,9 @@ namespace tokencoin_apis {
                abi_serializer::from_variant(action.action_trace, *pretty_input, resolver, abi_serializer_max_time);
             } EOS_RETHROW_EXCEPTIONS(chain::action_type_exception, "Invalid packed action_trace")
 
-            if(pretty_input->act.account == N(eosio.token) && pretty_input->act.name == N(transfer)){
+            //if(pretty_input->act.account == N(eosio.token) && pretty_input->act.name == N(transfer)){
+            const char*  contract = params.contract.c_str();
+            if(pretty_input->act.account == eosio::string_to_name(contract) && pretty_input->act.name == N(transfer)){
                action_b.transcation_id = pretty_input->trx_id;
                action_b.data = pretty_input->act.data_as<data_bean>();
                result.data.actions.push_back(action_b);
@@ -313,14 +315,16 @@ namespace tokencoin_apis {
          result.message = "ok";
          result.data.account_name = params.account_name;
          result.data.account_icon = "do not have icon";
-         const auto& a = db.get_account(result.data.account_name);
-          // if(a == NULL){
-          //    result.code = 1;
-          //    result.message = "do NOT find account";
-          //    return result;
-          // }
+         const auto& acount = db.get_account(result.data.account_name);
+         // if(a == nullptr){
+         //     result.code = 1;
+         //     result.message = "do NOT find account";
+         //     return result;
+         //  }
 
          const auto& d = tokencoin->chain_plug->chain().db();
+
+         //get asset in eosio.token
          const auto token_code = N(eosio.token);
          const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( token_code, params.account_name, N(accounts) ));
          if( t_id == nullptr ){
@@ -335,18 +339,22 @@ namespace tokencoin_apis {
          auto lower = idx.lower_bound(boost::make_tuple(t_id->id));
          auto upper = idx.lower_bound(boost::make_tuple(next_tid));
 
-         vector<char> data;
+         //vector<char> data;
          auto end = fc::time_point::now() + fc::microseconds(1000 * 10); /// 10ms max time
          unsigned int count = 0;
          auto itr = lower;
          for (itr = lower; itr != upper; ++itr) {
 
             if( itr->value.size() >= sizeof(asset) ){
+
                asset bal;
                fc::datastream<const char *> ds(itr->value.data(), itr->value.size());
                fc::raw::unpack(ds, bal);
                if( bal.get_symbol().valid()) {
-                   result.data.account_assets.emplace_back(bal);
+                   asset_data ad;
+                   ad.asset = bal;
+                   ad.contract = "eosio.token";
+                   result.data.account_assets.emplace_back(ad);
               }
             }
 
@@ -355,6 +363,45 @@ namespace tokencoin_apis {
             }
          }
 
+
+         //get asset in cactus.token
+         const auto token= N(cactus.token);
+         const auto* id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( token, params.account_name, N(accounts) ));
+         if( id == nullptr ){
+            result.code = 1;
+            result.message = "do NOT find account asset";
+            return result;
+         }
+
+         const auto &idx2 = d.get_index<key_value_index, by_scope_primary>();
+
+         decltype(id->id) next_tid2(id->id._id + 1);
+         lower = idx2.lower_bound(boost::make_tuple(id->id));
+         upper = idx2.lower_bound(boost::make_tuple(next_tid2));
+
+         //data;
+         end = fc::time_point::now() + fc::microseconds(1000 * 10); /// 10ms max time
+         count = 0;
+         itr = lower;
+         for (itr = lower; itr != upper; ++itr) {
+
+            if( itr->value.size() >= sizeof(asset) ){
+
+               asset b;
+               fc::datastream<const char *> ds(itr->value.data(), itr->value.size());
+               fc::raw::unpack(ds, b);
+               if( b.get_symbol().valid()) {
+                   asset_data a;
+                   a.asset = b;
+                   a.contract = "cactus.token";
+                   result.data.account_assets.emplace_back(a);
+              }
+            }
+
+            if(fc::time_point::now() > end){
+               break;
+            }
+         }
          return result;
 
       }

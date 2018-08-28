@@ -198,10 +198,14 @@ class read_only {
       get_account_app_results get_account_app( const get_account_app_params& params )const;
 
       ////////////////////
+      struct asset_data {
+        string contract;
+        asset  asset;
+      };
       struct get_account_asset_data {
-         name           account_name;
-         string         account_icon;
-         vector<asset>  account_assets;
+         name                account_name;
+         string              account_icon;
+         vector<asset_data>  account_assets;
       };
       struct get_account_asset_results {
          int                    code;
@@ -269,6 +273,7 @@ class read_only {
          name account_name;
          optional<int32_t> num_seq;
          optional<int32_t> skip_seq;
+         string contract;
       };
       get_transactions_results get_transactions(const get_transactions_params& params )const;
       //////////////////////
@@ -339,6 +344,7 @@ FC_REFLECT( eosio::tokencoin_apis::read_only::get_account_app_params, (account_n
 FC_REFLECT( eosio::tokencoin_apis::read_only::get_account_asset_results,(code)(message)(data))
 FC_REFLECT( eosio::tokencoin_apis::read_only::get_account_asset_data,(account_name)(account_icon)(account_assets))
 FC_REFLECT( eosio::tokencoin_apis::read_only::get_account_asset_params, (account_name) )
+FC_REFLECT( eosio::tokencoin_apis::read_only::asset_data, (contract)(asset) )
 
 FC_REFLECT( eosio::tokencoin_apis::read_only::get_sparklines_results,(code)(message)(data))
 FC_REFLECT( eosio::tokencoin_apis::read_only::get_sparklines_data,(sparkline_token_png))
@@ -348,7 +354,7 @@ FC_REFLECT( eosio::tokencoin_apis::read_only::data_bean,(from)(to)(quantity)(mem
 FC_REFLECT( eosio::tokencoin_apis::read_only::action_bean,(transcation_id)(block_num)(block_time)(data)(seq_num))
 FC_REFLECT( eosio::tokencoin_apis::read_only::get_actions_data,(actions)(last_irreversible_block))
 FC_REFLECT( eosio::tokencoin_apis::read_only::get_transactions_results,(code)(message)(data))
-FC_REFLECT( eosio::tokencoin_apis::read_only::get_transactions_params, (account_name) (num_seq) (skip_seq) )
+FC_REFLECT( eosio::tokencoin_apis::read_only::get_transactions_params, (account_name) (num_seq) (skip_seq) (contract) )
 
 FC_REFLECT( eosio::tokencoin_apis::read_only::exchange_state,(supply)(base)(quote)(fee_amount))
 FC_REFLECT( eosio::tokencoin_apis::read_only::connector,(balance)(weight))
