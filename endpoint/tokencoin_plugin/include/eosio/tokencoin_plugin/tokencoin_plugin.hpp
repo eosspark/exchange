@@ -5,6 +5,7 @@
 #pragma once
 #include <appbase/application.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
+#include <eosio/chain/plugin_interface.hpp>
 //#include <eosiolib/asset.hpp>
 
 namespace fc { class variant; }
@@ -19,6 +20,11 @@ namespace eosio {
    using chain::authority;
    using chain::asset;
    using chain::symbol;
+
+   using get_info_results         =  chain_apis::read_only::get_info_results;
+   using abi_json_to_bin_result   =  chain_apis::read_only::abi_json_to_bin_result;
+   using get_required_keys_result = chain_apis::read_only::get_required_keys_result;
+   using push_transaction_results = chain_apis::read_write::push_transaction_results;
 
    typedef double real_type;
 
@@ -42,6 +48,37 @@ class read_only {
    public:
       read_only(const controller& db, const fc::microseconds& abi_serializer_max_time, tokencoin_const_ptr&& tokencoin)
          : db(db), abi_serializer_max_time(abi_serializer_max_time), tokencoin(tokencoin) {}
+
+      struct get_required_keys2_params {
+        fc::variant transaction;
+        flat_set<public_key_type> available_keys;
+      };
+      struct get_required_keys2_result {
+        int                      code;
+        string                   message;
+        get_required_keys_result data;
+      };
+      get_required_keys2_result get_required_keys2( const get_required_keys2_params& params)const;
+
+      struct abi_json_to_bin2_params {
+        name         code;
+        name         action;
+        fc::variant  args;
+      };
+      struct abi_json_to_bin2_result {
+        int                    code;
+        string                 message;
+        abi_json_to_bin_result data;
+      };
+      abi_json_to_bin2_result abi_json_to_bin2( const abi_json_to_bin2_params& params )const;
+
+      using get_info2_params = chain_apis::empty;
+      struct get_info2_results {
+        int              code;
+        string           message;
+        get_info_results data;
+      };
+      get_info2_results get_info2(const get_info2_params& params) const;
 
       struct pair_data_bean_buy {
             account_name from;
@@ -280,6 +317,24 @@ class read_only {
 
 };
 
+class read_write {
+public:
+   controller& db;
+   const fc::microseconds abi_serializer_max_time;
+public:
+   read_write(controller& db, const fc::microseconds& abi_serializer_max_time)
+         : db(db), abi_serializer_max_time(abi_serializer_max_time) {}
+
+   using push_transaction2_params = fc::variant_object;
+   struct push_transaction2_results {
+      int                      code;
+      string                   message;
+      push_transaction_results data;
+   }; 
+   void push_transaction2(const push_transaction2_params& params, chain::plugin_interface::next_function<push_transaction2_results> next);
+
+};
+
 
 } // namespace tokencoin_apis
 
@@ -308,10 +363,12 @@ class tokencoin_plugin : public plugin<tokencoin_plugin> {
       void plugin_shutdown();
 
       // Only call this after plugin_startup()!
+     controller& chain();
      const controller& chain() const;
      fc::microseconds get_abi_serializer_max_time() const;
 
       tokencoin_apis::read_only  get_read_only_api()const { return tokencoin_apis::read_only(chain(), get_abi_serializer_max_time(), tokencoin_const_ptr(my)); }
+      tokencoin_apis::read_write get_read_write_api();
 
    private:
       tokencoin_ptr my;
@@ -370,3 +427,10 @@ FC_REFLECT( eosio::tokencoin_apis::read_only::pair_action_bean,(transcation_id)(
 FC_REFLECT( eosio::tokencoin_apis::read_only::get_pair_actions_data,(actions)(last_irreversible_block))
 FC_REFLECT( eosio::tokencoin_apis::read_only::get_pair_transactions_results,(code)(message)(data))
 FC_REFLECT( eosio::tokencoin_apis::read_only::get_pair_transactions_params,(account_name)(num_seq)(skip_seq))
+
+FC_REFLECT( eosio::tokencoin_apis::read_only::abi_json_to_bin2_params, (code)(action)(args) )
+FC_REFLECT( eosio::tokencoin_apis::read_only::abi_json_to_bin2_result, (code)(message)(data) )
+FC_REFLECT( eosio::tokencoin_apis::read_only::get_required_keys2_params, (transaction)(available_keys) )
+FC_REFLECT( eosio::tokencoin_apis::read_only::get_required_keys2_result,(code)(message)(data))
+FC_REFLECT( eosio::tokencoin_apis::read_only::get_info2_results,(code)(message)(data))
+FC_REFLECT( eosio::tokencoin_apis::read_write::push_transaction2_results,(code)(message)(data))

@@ -20,12 +20,12 @@ tokencoin_api_plugin::~tokencoin_api_plugin(){}
 void tokencoin_api_plugin::set_program_options(options_description&, options_description&) {}
 void tokencoin_api_plugin::plugin_initialize(const variables_map&) {}
 
-// struct async_result_visitor : public fc::visitor<std::string> {
-//    template<typename T>
-//    std::string operator()(const T& v) const {
-//       return fc::json::to_string(v);
-//    }
-// };
+struct async_result_visitor : public fc::visitor<std::string> {
+   template<typename T>
+   std::string operator()(const T& v) const {
+      return fc::json::to_string(v);
+   }
+};
 
 #define CALL(api_name, api_handle, api_namespace, call_name, http_response_code) \
 {std::string("/v1/" #api_name "/" #call_name), \
@@ -39,31 +39,32 @@ void tokencoin_api_plugin::plugin_initialize(const variables_map&) {}
           } \
        }}
 
-// #define CALL_ASYNC(api_name, api_handle, api_namespace, call_name, call_result, http_response_code) \
-// {std::string("/v1/" #api_name "/" #call_name), \
-//    [this, api_handle](string, string body, url_response_callback cb) mutable { \
-//       if (body.empty()) body = "{}"; \
-//       api_handle.call_name(fc::json::from_string(body).as<api_namespace::call_name ## _params>(),\
-//          [cb, body](const fc::static_variant<fc::exception_ptr, call_result>& result){\
-//             if (result.contains<fc::exception_ptr>()) {\
-//                try {\
-//                   result.get<fc::exception_ptr>()->dynamic_rethrow_exception();\
-//                } catch (...) {\
-//                   http_plugin::handle_exception(#api_name, #call_name, body, cb);\
-//                }\
-//             } else {\
-//                cb(http_response_code, result.visit(async_result_visitor()));\
-//             }\
-//          });\
-//    }\
-// }
+#define CALL_ASYNC(api_name, api_handle, api_namespace, call_name, call_result, http_response_code) \
+{std::string("/v1/" #api_name "/" #call_name), \
+   [this, api_handle](string, string body, url_response_callback cb) mutable { \
+      if (body.empty()) body = "{}"; \
+      api_handle.call_name(fc::json::from_string(body).as<api_namespace::call_name ## _params>(),\
+         [cb, body](const fc::static_variant<fc::exception_ptr, call_result>& result){\
+            if (result.contains<fc::exception_ptr>()) {\
+               try {\
+                  result.get<fc::exception_ptr>()->dynamic_rethrow_exception();\
+               } catch (...) {\
+                  http_plugin::handle_exception(#api_name, #call_name, body, cb);\
+               }\
+            } else {\
+               cb(http_response_code, result.visit(async_result_visitor()));\
+            }\
+         });\
+   }\
+}
 
 #define TOKENCOIN_RO_CALL(call_name, http_response_code) CALL(chain, ro_api, tokencoin_apis::read_only, call_name, http_response_code)
-
+#define TOKENCOIN_RW_CALL_ASYNC(call_name, call_result, http_response_code) CALL_ASYNC(chain, rw_api, tokencoin_apis::read_write, call_name, call_result, http_response_code)
+       
 void tokencoin_api_plugin::plugin_startup() {
    ilog( "starting tokencoin_api_plugin" );
    auto ro_api = app().get_plugin<tokencoin_plugin>().get_read_only_api();
-   //auto rw_api = app().get_plugin<chain_plugin>().get_read_write_api();
+   auto rw_api = app().get_plugin<tokencoin_plugin>().get_read_write_api();
 
    app().get_plugin<http_plugin>().add_api({
       TOKENCOIN_RO_CALL(get_account_app, 200),
@@ -71,7 +72,12 @@ void tokencoin_api_plugin::plugin_startup() {
       TOKENCOIN_RO_CALL(get_sparklines, 200),
       TOKENCOIN_RO_CALL(get_transactions, 200),
       TOKENCOIN_RO_CALL(get_pairs, 200),
-      TOKENCOIN_RO_CALL(get_pair_transactions, 200)
+      TOKENCOIN_RO_CALL(get_pair_transactions, 200),
+
+      TOKENCOIN_RO_CALL(get_info2, 200l),
+      TOKENCOIN_RO_CALL(abi_json_to_bin2, 200),
+      TOKENCOIN_RO_CALL(get_required_keys2, 200),
+      TOKENCOIN_RW_CALL_ASYNC(push_transaction2, tokencoin_apis::read_write::push_transaction2_results, 202)
    });
 }
 

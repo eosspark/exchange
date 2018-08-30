@@ -14,11 +14,29 @@ namespace eosio {
    using namespace chain;
    using namespace chain::config;
    using namespace chain_apis;
+   using namespace eosio::chain::plugin_interface;
 
    //using boost::signals2::scoped_connection;
 
    static appbase::abstract_plugin& _tokencoin_plugin = app().register_plugin<tokencoin_plugin>();
 
+   #define CATCH_AND_CALL(NEXT)\
+      catch ( const fc::exception& err ) {\
+         NEXT(err.dynamic_copy_exception());\
+      } catch ( const std::exception& e ) {\
+         fc::exception fce( \
+            FC_LOG_MESSAGE( warn, "rethrow ${what}: ", ("what",e.what())),\
+            fc::std_exception_code,\
+            BOOST_CORE_TYPEID(e).name(),\
+            e.what() ) ;\
+         NEXT(fce.dynamic_copy_exception());\
+      } catch( ... ) {\
+         fc::unhandled_exception e(\
+            FC_LOG_MESSAGE(warn, "rethrow"),\
+            std::current_exception());\
+         NEXT(e.dynamic_copy_exception());\
+      }
+   
 
    class tokencoin_plugin_impl {
       public:
@@ -37,9 +55,14 @@ namespace eosio {
    void tokencoin_plugin::plugin_startup() {}
    void tokencoin_plugin::plugin_shutdown() {}
 
+   controller& tokencoin_plugin::chain() { return my->chain_plug->chain(); }
    const controller& tokencoin_plugin::chain() const { return my->chain_plug->chain(); }
    fc::microseconds tokencoin_plugin::get_abi_serializer_max_time() const {
       return my->abi_serializer_max_time_ms;
+   }
+
+   tokencoin_apis::read_write tokencoin_plugin::get_read_write_api() {
+       return tokencoin_apis::read_write(chain(), get_abi_serializer_max_time());
    }
 
 namespace tokencoin_apis { 
@@ -63,6 +86,84 @@ namespace tokencoin_apis {
       template<typename Api>
       auto make_resolver2(const Api* api, const fc::microseconds& max_serialization_time) {
          return resolver_factory2<Api>::make(api, max_serialization_time);
+      }
+
+      read_only::get_info2_results read_only::get_info2(const read_only::get_info2_params& params) const {
+         //const auto& db = tokencoin->chain_plug->chain();
+         //const auto& rm = db.get_resource_limits_manager();
+
+         get_info2_results result;
+         result.code = 0;
+         result.message = "ok";  
+
+         auto ro_api = app().find_plugin<chain_plugin>()->get_read_only_api();
+         result.data = ro_api.get_info( params );      
+
+         return result;
+      }
+
+      read_only::abi_json_to_bin2_result read_only::abi_json_to_bin2( const read_only::abi_json_to_bin2_params& params )const try {
+         abi_json_to_bin2_result result;
+         result.code = 0;
+         result.message = "ok"; 
+
+         auto ro_api = app().find_plugin<chain_plugin>()->get_read_only_api();
+         result.data = ro_api.abi_json_to_bin({params.code, params.action, params.args});          
+         return result;
+      } FC_RETHROW_EXCEPTIONS( warn, "code: ${code}, action: ${action}, args: ${args}",
+                               ("code", params.code)( "action", params.action )( "args", params.args ))
+
+      read_only::get_required_keys2_result read_only::get_required_keys2( const get_required_keys2_params& params )const {
+         get_required_keys2_result result;
+         result.code = 0;
+         result.message = "ok";  
+
+         auto ro_api = app().find_plugin<chain_plugin>()->get_read_only_api();
+         result.data = ro_api.get_required_keys({params.transaction, params.available_keys});  
+
+         //result.data.required_keys = required_keys_set;
+         return result;
+      }
+
+      void read_write::push_transaction2(const read_write::push_transaction2_params& params,  chain::plugin_interface::next_function<read_write::push_transaction2_results> next) {
+
+
+         // auto rw_api = app().find_plugin<chain_plugin>()->get_read_write_api();
+         // result.data = ro_api.push_transaction(params , [this, next](const fc::static_variant<fc::exception_ptr, push_transaction_results>& result){
+               // if (result.contains<fc::exception_ptr>()) {
+               //    next(result.get<fc::exception_ptr>());
+               // } else {
+               //    next(read_write::push_transaction2_results{0,"ok", result});
+               // } CATCH_AND_CALL(next);          
+         // }); 
+         
+         try {
+            auto pretty_input = std::make_shared<packed_transaction>();
+            auto resolver = make_resolver2(this, abi_serializer_max_time);
+            try {
+               abi_serializer::from_variant(params, *pretty_input, resolver, abi_serializer_max_time);
+            } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
+
+            app().get_method<incoming::methods::transaction_async>()(pretty_input, true, [this, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void{
+               if (result.contains<fc::exception_ptr>()) {
+                  next(result.get<fc::exception_ptr>());
+               } else {
+                  auto trx_trace_ptr = result.get<transaction_trace_ptr>();
+
+                  try {
+                     fc::variant pretty_output;
+                     pretty_output = db.to_variant_with_abi(*trx_trace_ptr, abi_serializer_max_time);
+
+                     chain::transaction_id_type id = trx_trace_ptr->id;
+                     next(read_write::push_transaction2_results{0,"ok",{id, pretty_output}});
+                  } CATCH_AND_CALL(next);
+               }
+            });
+
+
+         } catch ( boost::interprocess::bad_alloc& ) {
+            raise(SIGUSR1);
+         } CATCH_AND_CALL(next);
       }
 
 
